@@ -390,6 +390,52 @@ static UIImage *POStarImage(void) {
     return CGPointMake(CGRectGetMidX(w.bounds), y);
 }
 
+// 收集主屏应用图标（SBIconView 类，按类名匹配，避开列表容器）。
+static void POCollectIconViews(UIView *view, NSMutableArray *out, int depth) {
+    if (depth > 9) return;
+    for (UIView *sub in view.subviews) {
+        NSString *cls = NSStringFromClass([sub class]);
+        if ([cls containsString:@"IconView"] && ![cls containsString:@"ListView"] &&
+            sub.bounds.size.width > 30 && sub.bounds.size.width < 100 &&
+            fabs(sub.bounds.size.width - sub.bounds.size.height) < 6) {
+            [out addObject:sub];
+        }
+        POCollectIconViews(sub, out, depth + 1);
+    }
+}
+
+// 停靠点三选一：APP 图标顶 / 灵动岛 / 屏幕边缘。
+-(CGPoint)butterflyRandomPerchPoint{
+    UIWindow *w = self.window;
+    CGRect b = w ? w.bounds : CGRectMake(0, 0, 400, 800);
+    uint32_t type = arc4random_uniform(3);
+    if (type == 0) {
+        return [self butterflyIslandPoint];
+    }
+    if (type == 1) {
+        // 应用图标：在 SpringBoard 各窗口里找主屏图标，停在图标顶。
+        NSMutableArray *icons = [NSMutableArray array];
+        for (UIWindow *win in [UIApplication sharedApplication].windows) {
+            POCollectIconViews(win, icons, 0);
+        }
+        if (icons.count > 0) {
+            UIView *icon = icons[arc4random_uniform((uint32_t)icons.count)];
+            CGPoint c = [icon.superview convertPoint:icon.center toView:nil];
+            return CGPointMake(c.x, c.y - 12);
+        }
+        // 找不到图标（App 前台）→ 中部随机点（视觉上停在 App 画面上）。
+        return CGPointMake(60 + (CGFloat)arc4random_uniform((uint32_t)MAX(1, (int)(b.size.width - 120))),
+                           180 + (CGFloat)arc4random_uniform((uint32_t)MAX(1, (int)(b.size.height - 400))));
+    }
+    // 屏幕边缘：随机左/右/下缘。
+    uint32_t side = arc4random_uniform(3);
+    CGFloat ySpan = MAX(1, (int)(b.size.height - 320));
+    if (side == 0) return CGPointMake(36, 140 + (CGFloat)arc4random_uniform(ySpan));
+    if (side == 1) return CGPointMake(b.size.width - 36, 140 + (CGFloat)arc4random_uniform(ySpan));
+    return CGPointMake(60 + (CGFloat)arc4random_uniform((uint32_t)MAX(1, (int)(b.size.width - 120))),
+                       b.size.height - 56);
+}
+
 -(void)butterflyTakeOff{
     if (butterflyPhase != 0 || !self.window) return;
     butterflyPhase = 1;
@@ -419,9 +465,9 @@ static UIImage *POStarImage(void) {
     NSDictionary *settings = [POApplicationHelper settings];
     UIView *canvas = butterflyCarrier.superview;
     CGRect b = canvas.bounds;
-    // 漫游时长到 → 飞向灵动岛停靠。
+    // 漫游时长到 → 飞向停靠点（App 图标 / 灵动岛 / 屏幕边缘，随机）。
     if (CACurrentMediaTime() >= butterflyRestUntil) {
-        [self butterflyApproachIsland];
+        [self butterflyApproachPerch];
         return;
     }
     // 正弦扰动漫游 + 速度/高度设置（高度 1–20，20=满屏）。
@@ -451,22 +497,22 @@ static UIImage *POStarImage(void) {
     }
 }
 
-// 漫游结束 → 滑翔到灵动岛停靠。
--(void)butterflyApproachIsland{
+// 漫游结束 → 滑翔到随机停靠点（App 图标顶 / 灵动岛 / 屏幕边缘）。
+-(void)butterflyApproachPerch{
     butterflyPhase = 2;
     flyLink.paused = YES;
-    CGPoint island = [self butterflyIslandPoint];
-    CGFloat angle = (CGFloat)atan2(island.y - butterflyCarrier.center.y,
-                                   island.x - butterflyCarrier.center.x) + (CGFloat)M_PI_2;
+    CGPoint perch = [self butterflyRandomPerchPoint];
+    CGFloat angle = (CGFloat)atan2(perch.y - butterflyCarrier.center.y,
+                                   perch.x - butterflyCarrier.center.x) + (CGFloat)M_PI_2;
     [UIView animateWithDuration:0.9
                           delay:0
                         options:UIViewAnimationOptionCurveEaseInOut
                      animations:^{
-        self->butterflyCarrier.center = island;
+        self->butterflyCarrier.center = perch;
         self->butterflyCarrier.transform = CGAffineTransformMakeRotation(angle);
     } completion:^(BOOL done) {
         if (!done || self->butterflyPhase != 2) return;
-        self->butterflyPhase = 3;   // 停靠灵动岛
+        self->butterflyPhase = 3;   // 停靠
         double rest = MIN(MAX([[[POApplicationHelper settings] objectForKey:@"butterflyRestInterval"] doubleValue], 1), 20);
         [self performSelector:@selector(butterflyPerchEnd) withObject:nil afterDelay:rest];
     }];
