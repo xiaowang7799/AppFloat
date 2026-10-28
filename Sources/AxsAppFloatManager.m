@@ -4,12 +4,17 @@
 #import <objc/message.h>
 
 // 穿透窗口：只在浮窗/面板区域吃手势，其余透传给系统。
+// 右边缘 30pt 条带例外——留给边缘手势（hitTest 返回 nil 手势不会触发）。
 @interface AxsAppFloatOverlayWindow : UIWindow
 @end
 @implementation AxsAppFloatOverlayWindow
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *hit = [super hitTest:point withEvent:event];
-    return (hit == self) ? nil : hit;
+    if (hit == self) {
+        if (point.x >= self.bounds.size.width - 30.0) return self;   // 边缘手势带
+        return nil;                                                  // 其余穿透
+    }
+    return hit;
 }
 @end
 
