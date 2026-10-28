@@ -8,8 +8,13 @@ static NSString *const kAxsAppFloatDomain = @"com.axs.appfloat";
 
 @implementation AxsAppFloatRootListController
 
-- (NSArray *)specifiers {
-    return [self loadSpecifiersFromPlistName:@"AxsAppFloatRoot" target:self];
+- (NSMutableArray *)specifiers {
+    if (!_specifiers) {
+        NSMutableArray *items = [[self loadSpecifiersFromPlistName:@"AxsAppFloatRoot"
+                                                            target:self] mutableCopy];
+        _specifiers = items;
+    }
+    return _specifiers;
 }
 
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
