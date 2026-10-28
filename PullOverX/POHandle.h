@@ -32,6 +32,8 @@ typedef NS_ENUM(NSUInteger, POHandleLayoutMode) {
 -(instancetype)initWithController:(id)controller;
 -(void)refreshHandleSizeAnimated:(BOOL)animated;
 -(void)refreshNubbedPositionAnimated:(BOOL)animated;
+// 飞行/停靠中的蝴蝶命中检测（供窗口点击白名单放行）。
+-(UIView *)butterflyHitViewForWindowPoint:(CGPoint)point;
 
 
 @end

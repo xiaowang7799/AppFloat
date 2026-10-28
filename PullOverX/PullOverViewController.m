@@ -660,6 +660,12 @@ static CGFloat POPresentationAngleForOrientation(UIInterfaceOrientation orientat
         return nil;
     }
 
+    // 飞行/停靠中的蝴蝶（改版新增）：放行点击 → 回家。
+    UIView *butterflyHit = [self.handle butterflyHitViewForWindowPoint:point];
+    if (butterflyHit) {
+        return butterflyHit;
+    }
+
     CGPoint pointInView = [self.view convertPoint:point fromView:self.view.window];
     CGPoint handlePointInHandle = [self.handle convertPoint:point fromView:self.view.window];
     if (!self.handle.hidden && self.handle.alpha > 0.01 &&
