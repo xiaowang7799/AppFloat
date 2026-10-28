@@ -345,8 +345,13 @@ static UIImage *POStarImage(void) {
 
 -(void)updateButterflyForNubbed:(BOOL)nubbed{
     [self buildButterflyIfNeeded];
-    BOOL on = nubbed && [[POApplicationHelper settings][@"nubButterflyOn"] boolValue];
+    BOOL on = nubbed && [[POApplicationHelper settings][@"nubButterflyOn"] boolValue] && [self butterflyAllowedNow];
     BOOL flyFree = [[POApplicationHelper settings][@"butterflyFlyFree"] boolValue];
+    // 缩回期间 2s 轮询显示范围（进/出 App 自动切换蝴蝶/经典手柄）。
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(butterflyScopePoll) object:nil];
+    if (nubbed) {
+        [self performSelector:@selector(butterflyScopePoll) withObject:nil afterDelay:2.0];
+    }
     if (on) {
         butterflyCarrier.hidden = NO;
         sparkleLayer.opacity = 1.0f;
@@ -404,15 +409,12 @@ static void POCollectIconViews(UIView *view, NSMutableArray *out, int depth) {
     }
 }
 
-// 停靠点三选一：APP 图标顶 / 灵动岛 / 屏幕边缘。
+// 停靠点二选一：APP 图标顶 / 屏幕边缘（灵动岛停靠已按需求取消）。
 -(CGPoint)butterflyRandomPerchPoint{
     UIWindow *w = self.window;
     CGRect b = w ? w.bounds : CGRectMake(0, 0, 400, 800);
-    uint32_t type = arc4random_uniform(3);
+    uint32_t type = arc4random_uniform(2);
     if (type == 0) {
-        return [self butterflyIslandPoint];
-    }
-    if (type == 1) {
         // 应用图标：在 SpringBoard 各窗口里找主屏图标，停在图标顶。
         NSMutableArray *icons = [NSMutableArray array];
         for (UIWindow *win in [UIApplication sharedApplication].windows) {
@@ -434,6 +436,14 @@ static void POCollectIconViews(UIView *view, NSMutableArray *out, int depth) {
     if (side == 1) return CGPointMake(b.size.width - 36, 140 + (CGFloat)arc4random_uniform(ySpan));
     return CGPointMake(60 + (CGFloat)arc4random_uniform((uint32_t)MAX(1, (int)(b.size.width - 120))),
                        b.size.height - 56);
+}
+
+// 显示范围：0=仅桌面 1=所有界面。桌面模式下 App 前台回归经典手柄。
+-(BOOL)butterflyAllowedNow{
+    NSInteger scope = [[[[POApplicationHelper settings] objectForKey:@"butterflyScope"] description] integerValue];
+    if (scope == 1) return YES;
+    NSString *front = [POApplicationHelper frontMostBundleId];
+    return (front.length == 0 || [front isEqualToString:@"com.apple.springboard"]);
 }
 
 -(void)butterflyTakeOff{
@@ -465,6 +475,11 @@ static void POCollectIconViews(UIView *view, NSMutableArray *out, int depth) {
     NSDictionary *settings = [POApplicationHelper settings];
     UIView *canvas = butterflyCarrier.superview;
     CGRect b = canvas.bounds;
+    // 显示范围=桌面时，飞行中进 App → 回家。
+    if (![self butterflyAllowedNow]) {
+        [self butterflyFlyHome];
+        return;
+    }
     // 漫游时长到 → 飞向停靠点（App 图标 / 灵动岛 / 屏幕边缘，随机）。
     if (CACurrentMediaTime() >= butterflyRestUntil) {
         [self butterflyApproachPerch];
@@ -520,7 +535,7 @@ static void POCollectIconViews(UIView *view, NSMutableArray *out, int depth) {
 
 -(void)butterflyPerchEnd{
     if (butterflyPhase != 3) return;
-    if ([self usesNubbedPresentation] &&
+    if ([self usesNubbedPresentation] && [self butterflyAllowedNow] &&
         [[POApplicationHelper settings][@"nubButterflyOn"] boolValue] &&
         [[POApplicationHelper settings][@"butterflyFlyFree"] boolValue]) {
         [self butterflyTakeOff];
@@ -571,9 +586,13 @@ static void POCollectIconViews(UIView *view, NSMutableArray *out, int depth) {
     double interval = MIN(MAX([[[POApplicationHelper settings] objectForKey:@"butterflyRestInterval"] doubleValue], 1), 20);
     [self performSelector:@selector(butterflyRetakeoffIfIdle) withObject:nil afterDelay:interval];
 }
+-(void)butterflyScopePoll{
+    [self updateButterflyForNubbed:[self usesNubbedPresentation]];
+}
 -(void)butterflyRetakeoffIfIdle{
     if (butterflyPhase != 0) return;
     if (![self usesNubbedPresentation]) return;
+    if (![self butterflyAllowedNow]) return;
     if ([[POApplicationHelper settings][@"nubButterflyOn"] boolValue] &&
         [[POApplicationHelper settings][@"butterflyFlyFree"] boolValue]) {
         [self butterflyTakeOff];

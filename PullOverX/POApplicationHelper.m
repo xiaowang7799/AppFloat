@@ -336,6 +336,7 @@ static id POSharedObjectForClass(Class cls) {
             @"butterflyFlyHeight": @20,
             @"butterflyFlightTime": @8,
             @"butterflyRestInterval": @5,
+            @"butterflyScope": @1,
             @"landscapeBehavior": @"rotate",
             @"externalURLRoutingEnabled": @NO,
             @"externalURLRoutingWhitelist": @[],
