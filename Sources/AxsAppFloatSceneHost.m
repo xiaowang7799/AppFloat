@@ -172,6 +172,14 @@ static NSString *const kAxsAppFloatRequester = @"AppFloat";
     return nil;
 }
 
+- (id)fbSceneManager {
+    Class cls = NSClassFromString(@"FBSceneManager");
+    if ([cls respondsToSelector:NSSelectorFromString(@"sharedInstance")]) {
+        return ((id (*)(id, SEL))objc_msgSend)(cls, NSSelectorFromString(@"sharedInstance"));
+    }
+    return nil;
+}
+
 - (id)findFBScene {
     id app = [self sbApplication];
     if (!app) return nil;
@@ -232,6 +240,50 @@ static NSString *const kAxsAppFloatRequester = @"AppFloat";
         if ([self object:s matchesBundleID:self.bundleID]) {
             id inner = [self fbSceneFromHandle:s];
             return inner ?: s;
+        }
+    }
+
+    // 4) FBSceneManager：workspace 全量场景表 + sceneWithIdentifier:（17 上常走这条）。
+    id fbm = [self fbSceneManager];
+    if (fbm) {
+        @try {
+            id workspace = [fbm valueForKey:@"_workspace"];
+            for (NSString *key in @[@"_allScenesByID", @"_scenesByIdentifier", @"_scenesByID"]) {
+                id map = [workspace valueForKey:key];
+                if (![map isKindOfClass:[NSDictionary class]]) continue;
+                for (id identifier in map) {
+                    if ([identifier isKindOfClass:[NSString class]] &&
+                        [identifier containsString:self.bundleID]) {
+                        id candidate = map[identifier];
+                        id inner = [self fbSceneFromHandle:candidate];
+                        return inner ?: candidate;
+                    }
+                }
+            }
+        } @catch (__unused NSException *e) {}
+        for (NSString *name in @[@"sceneWithIdentifier:", @"sceneFromIdentifier:"]) {
+            SEL sel = NSSelectorFromString(name);
+            if (![fbm respondsToSelector:sel]) continue;
+            NSArray *candidates = @[
+                self.bundleID,
+                [NSString stringWithFormat:@"sceneID:%@-default", self.bundleID],
+                [NSString stringWithFormat:@"%@-default", self.bundleID],
+            ];
+            for (NSString *cid in candidates) {
+                @try {
+                    id s = ((id (*)(id, SEL, id))objc_msgSend)(fbm, sel, cid);
+                    if (s) {
+                        id inner = [self fbSceneFromHandle:s];
+                        return inner ?: s;
+                    }
+                } @catch (__unused NSException *e) {}
+            }
+        }
+        for (id s in [self allScenesFromManager:fbm]) {
+            if ([self object:s matchesBundleID:self.bundleID]) {
+                id inner = [self fbSceneFromHandle:s];
+                return inner ?: s;
+            }
         }
     }
     return nil;
@@ -496,10 +548,14 @@ static NSString *const kAxsAppFloatRequester = @"AppFloat";
         self.live = YES;
         return YES;
     }
+    if ([self sbApplication] == nil) {
+        self.statusText = @"[A] 找不到应用对象";
+        return NO;
+    }
     id scene = [self findFBScene];
     self.scene = scene;
     if (!scene) {
-        self.statusText = @"应用未在后台运行（先打开一次该 App）";
+        self.statusText = @"[B] 应用在但场景链空（已试 mainScene/管理器/FBSceneManager）";
         return NO;
     }
     [self applyForeground:YES];
@@ -508,7 +564,7 @@ static NSString *const kAxsAppFloatRequester = @"AppFloat";
         ?: [self layerHostContainerFromScene:scene]
         ?: [self hostViewFromHandleFallback];
     if (!hv) {
-        self.statusText = [NSString stringWithFormat:@"找到场景但无宿主视图（iOS %@）",
+        self.statusText = [NSString stringWithFormat:@"[C] 找到场景但无宿主视图（iOS %@）",
                            [UIDevice currentDevice].systemVersion];
         return NO;
     }

@@ -12,6 +12,7 @@ static const CGFloat kHeaderHeight = 36.0;
 @property (nonatomic, strong) UILabel *hintLabel;
 @property (nonatomic, assign) CGRect restoreFrame;   // 放大前的原始帧
 @property (nonatomic, assign) BOOL maximized;
+@property (nonatomic, assign) NSInteger retryCount;  // 自动重试计数
 @end
 
 @implementation AxsAppFloatWindow
@@ -122,17 +123,22 @@ static const CGFloat kHeaderHeight = 36.0;
 }
 
 - (void)attachScene {
-    if ([self.host attachToContainer:self.contentView]) {
-        self.hintLabel.hidden = YES;
-    } else {
-        self.hintLabel.text = self.host.statusText ?: @"无法连接画面";
-        self.hintLabel.hidden = NO;
-    }
+    BOOL ok = [self.host attachToContainer:self.contentView];
     // 状态行常驻显示（空白时可据此定位宿主路径）。
-    self.hintLabel.text = [NSString stringWithFormat:@"%@\n[%@]",
+    self.hintLabel.text = [NSString stringWithFormat:@"%@\n[iOS %@]",
         self.host.statusText ?: @"", [UIDevice currentDevice].systemVersion];
-    self.hintLabel.hidden = NO;
+    self.hintLabel.hidden = ok ? YES : NO;
     [self.contentView bringSubviewToFront:self.hintLabel];
+    if (ok) {
+        self.retryCount = 0;
+    } else if (self.retryCount < 10) {
+        // 场景建立有延迟：失败自动重试（2s×10 次），期间用户去开 App 也能接上。
+        self.retryCount += 1;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            if (!self.host.live) [self attachScene];
+        });
+    }
 }
 
 - (void)layoutSubviews {
