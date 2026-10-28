@@ -409,12 +409,25 @@ static CGFloat POPresentationAngleForOrientation(UIInterfaceOrientation orientat
     [self.handle refreshHandleSizeAnimated:NO];
     [self applyLayoutPreservingHandlePosition:YES];
     [self.handle refreshNubbedPositionAnimated:NO];
+    [self applyWindowChrome];
     [self reevaluateKeyboardZoomAnimated:YES];
     if (self.view.window && self.view.window.userInteractionEnabled && self.view.alpha > 0.01) {
         [self resetAutoNubTimer];
     } else {
         [self cancelAutoNubTimer];
     }
+}
+
+// 窗口外观（改版新增）：圆角 / 透明度，设置热更。
+-(void)applyWindowChrome{
+    if (!self.isViewLoaded) return;
+    NSDictionary *settings = [POApplicationHelper settings];
+    id corner = settings[@"panelCorner"];
+    CGFloat c = corner ? MIN(MAX([corner doubleValue], 0), 40) : 0;
+    self.contentView.layer.cornerRadius = c;
+    self.contentView.layer.masksToBounds = c > 0;
+    id alpha = settings[@"panelAlpha"];
+    self.contentView.alpha = alpha ? MIN(MAX([alpha doubleValue], 0.5), 1.0) : 1.0;
 }
 
 -(void)dealloc{

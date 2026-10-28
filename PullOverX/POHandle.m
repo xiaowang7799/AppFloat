@@ -21,6 +21,8 @@
 @interface POHandle () <UIGestureRecognizerDelegate> {
     UILabel *messageLabel;
     UIVisualEffectView *blurView;
+    UIImageView *butterflyView;
+    CAEmitterLayer *sparkleLayer;
     UITapGestureRecognizer *_tapGestureRecognizer;
     UILongPressGestureRecognizer *quickSwitchLongPress;
     UIPanGestureRecognizer *_panelPanGestureRecognizer;
@@ -31,6 +33,102 @@
 -(void)applyCurrentPresentationAnimated:(BOOL)animated;
 
 @end
+
+// 彩虹渐变蝴蝶（手柄缩回后的形态）。
+static UIImage *POButterflyImage(void) {
+    static UIImage *img = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        CGFloat s = 84.0;
+        UIGraphicsBeginImageContextWithOptions(CGSizeMake(s, s), NO, 0);
+        CGContextRef ctx = UIGraphicsGetCurrentContext();
+        CGFloat cx = s / 2.0, cy = s / 2.0;
+        // 四片翅膀：上大下小，对称。
+        for (int side = -1; side <= 1; side += 2) {
+            // 上翅（洋红→橙）。
+            UIBezierPath *up = [UIBezierPath bezierPath];
+            [up moveToPoint:CGPointMake(cx, cy - 2)];
+            [up addQuadCurveToPoint:CGPointMake(cx + side * 34, cy - 30)
+                       controlPoint:CGPointMake(cx + side * 26, cy - 32)];
+            [up addQuadCurveToPoint:CGPointMake(cx + side * 30, cy + 2)
+                       controlPoint:CGPointMake(cx + side * 38, cy - 2)];
+            [up closePath];
+            CGFloat compsUp[] = {1.0, 0.30, 0.62, 0.95,  1.0, 0.62, 0.18, 0.9};
+            CGFloat locs[] = {0, 1};
+            CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+            CGGradientRef g = CGGradientCreateWithColorComponents(space, compsUp, locs, 2);
+            CGContextSaveGState(ctx);
+            [up addClip];
+            CGContextDrawLinearGradient(ctx, g, CGPointMake(cx, cy - 30), CGPointMake(cx, cy), 0);
+            CGContextRestoreGState(ctx);
+            CGGradientRelease(g);
+            [[UIColor colorWithWhite:1 alpha:0.85] setStroke];
+            up.lineWidth = 1.6;
+            [up stroke];
+            // 下翅（紫→青）。
+            UIBezierPath *dn = [UIBezierPath bezierPath];
+            [dn moveToPoint:CGPointMake(cx, cy + 1)];
+            [dn addQuadCurveToPoint:CGPointMake(cx + side * 26, cy + 30)
+                        controlPoint:CGPointMake(cx + side * 30, cy + 14)];
+            [dn addQuadCurveToPoint:CGPointMake(cx + side * 8, cy + 4)
+                        controlPoint:CGPointMake(cx + side * 14, cy + 12)];
+            [dn closePath];
+            CGFloat compsDn[] = {0.55, 0.30, 1.0, 0.95,  0.15, 0.80, 1.0, 0.9};
+            CGGradientRef g2 = CGGradientCreateWithColorComponents(space, compsDn, locs, 2);
+            CGContextSaveGState(ctx);
+            [dn addClip];
+            CGContextDrawLinearGradient(ctx, g2, CGPointMake(cx, cy + 30), CGPointMake(cx, cy), 0);
+            CGContextRestoreGState(ctx);
+            CGGradientRelease(g2);
+            CGColorSpaceRelease(space);
+            [dn stroke];
+            // 翅膀亮片。
+            [[UIColor colorWithWhite:1 alpha:0.9] setFill];
+            for (int d = 0; d < 3; d++) {
+                CGFloat dx = cx + side * (14 + d * 7);
+                CGFloat dy = cy - 18 + d * 6;
+                [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(dx, dy, 3.2, 3.2)] fill];
+            }
+        }
+        // 身体 + 触角。
+        [[UIColor colorWithWhite:0.12 alpha:1] setFill];
+        [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(cx - 2.2, cy - 16, 4.4, 32) cornerRadius:2.2] fill];
+        [[UIColor colorWithWhite:0.12 alpha:0.9] setStroke];
+        UIBezierPath *ant1 = [UIBezierPath bezierPath];
+        [ant1 moveToPoint:CGPointMake(cx, cy - 15)];
+        [ant1 addQuadCurveToPoint:CGPointMake(cx - 9, cy - 26) controlPoint:CGPointMake(cx - 6, cy - 22)];
+        UIBezierPath *ant2 = [UIBezierPath bezierPath];
+        [ant2 moveToPoint:CGPointMake(cx, cy - 15)];
+        [ant2 addQuadCurveToPoint:CGPointMake(cx + 9, cy - 26) controlPoint:CGPointMake(cx + 6, cy - 22)];
+        ant1.lineWidth = ant2.lineWidth = 1.6;
+        [ant1 stroke];
+        [ant2 stroke];
+        img = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+    });
+    return img;
+}
+
+// 四角星闪粉 sprite。
+static UIImage *POStarImage(void) {
+    static UIImage *img = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        CGFloat s = 16.0;
+        UIGraphicsBeginImageContextWithOptions(CGSizeMake(s, s), NO, 0);
+        [[UIColor whiteColor] setFill];
+        UIBezierPath *star = [UIBezierPath bezierPath];
+        [star moveToPoint:CGPointMake(s / 2, 0)];
+        [star addQuadCurveToPoint:CGPointMake(s, s / 2) controlPoint:CGPointMake(s / 2 + 1.5, s / 2 - 1.5)];
+        [star addQuadCurveToPoint:CGPointMake(s / 2, s) controlPoint:CGPointMake(s / 2 + 1.5, s / 2 + 1.5)];
+        [star addQuadCurveToPoint:CGPointMake(0, s / 2) controlPoint:CGPointMake(s / 2 - 1.5, s / 2 + 1.5)];
+        [star addQuadCurveToPoint:CGPointMake(s / 2, 0) controlPoint:CGPointMake(s / 2 - 1.5, s / 2 - 1.5)];
+        [star fill];
+        img = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+    });
+    return img;
+}
 
 @implementation POHandle
 
@@ -116,6 +214,7 @@
     blurView.frame = self.bounds;
     blurView.layer.cornerRadius = ([self usesNubbedPresentation] ? [self nubbedCornerRadius] : [self fullCornerRadius]) * cornerScale;
     [self applyCustomStyle];
+    [self updateButterflyForNubbed:[self usesNubbedPresentation]];
 }
 
 -(instancetype)initWithController:(id)hubController{
@@ -183,6 +282,60 @@
     [self applyCurrentPresentationAnimated:NO];
 }
 
+-(void)buildButterflyIfNeeded{
+    if (butterflyView) return;
+    butterflyView = [[UIImageView alloc] initWithImage:POButterflyImage()];
+    butterflyView.contentMode = UIViewContentModeScaleAspectFit;
+    butterflyView.hidden = YES;
+    [self addSubview:butterflyView];
+    // 翅膀扇动。
+    CAKeyframeAnimation *flap = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale.x"];
+    flap.values = @[@1.0, @0.68, @1.0];
+    flap.duration = 1.15;
+    flap.repeatCount = HUGE_VALF;
+    flap.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [butterflyView.layer addAnimation:flap forKey:@"po_flap"];
+    // 亮晶晶闪粉（加法混合星尘）。
+    sparkleLayer = [CAEmitterLayer layer];
+    sparkleLayer.emitterShape = kCAEmitterLayerRectangle;
+    sparkleLayer.renderMode = kCAEmitterLayerAdditive;
+    sparkleLayer.emitterCells = nil;
+    CAEmitterCell *star = [CAEmitterCell emitterCell];
+    star.contents = (__bridge id)POStarImage().CGImage;
+    star.birthRate = 2.6f;
+    star.lifetime = 1.15f;
+    star.velocity = 12.0f;
+    star.velocityRange = 9.0f;
+    star.emissionRange = M_PI * 2;
+    star.scale = 0.30f;
+    star.scaleRange = 0.18f;
+    star.alphaSpeed = -0.85f;
+    star.spin = 1.2f;
+    star.spinRange = 2.0f;
+    sparkleLayer.emitterCells = @[star];
+    sparkleLayer.opacity = 0;
+    [self.layer addSublayer:sparkleLayer];
+}
+
+-(void)updateButterflyForNubbed:(BOOL)nubbed{
+    [self buildButterflyIfNeeded];
+    BOOL on = nubbed && [[POApplicationHelper settings][@"nubButterflyOn"] boolValue];
+    CGFloat size = MIN(CGRectGetWidth(self.bounds) * 1.25, 42.0);
+    // 停在屏幕边缘可见区（手柄左侧可见部分的中心）。
+    CGFloat visible = CGRectGetWidth(self.bounds) * (1.0 - [self nubHiddenPercentage] / 100.0);
+    CGFloat bx = visible - size / 2.0 - 2.0;
+    CGFloat by = (CGRectGetHeight(self.bounds) - size) / 2.0;
+    butterflyView.frame = CGRectMake(bx, by, size, size);
+    sparkleLayer.frame = butterflyView.frame;
+    sparkleLayer.emitterPosition = CGPointMake(size / 2.0, size / 2.0);
+    sparkleLayer.emitterSize = CGSizeMake(size * 0.9, size * 0.9);
+    butterflyView.hidden = !on;
+    sparkleLayer.opacity = on ? 1.0f : 0.0f;
+    // 蝴蝶形态下隐藏手柄本体（毛玻璃与图标）。
+    blurView.alpha = on ? 0.0 : 1.0;
+    self.imageView.alpha = on ? 0.0 : 1.0;
+}
+
 -(void)applyCurrentPresentationAnimated:(BOOL)animated{
     void (^changes)(void) = ^{
         if ([self usesNubbedPresentation]) {
@@ -194,6 +347,7 @@
             self.frame = frame;
             self->blurView.layer.cornerRadius = [self fullCornerRadius];
         }
+        [self updateButterflyForNubbed:[self usesNubbedPresentation]];
     };
     if (animated) {
         [UIView animateWithDuration:0.3 animations:changes];

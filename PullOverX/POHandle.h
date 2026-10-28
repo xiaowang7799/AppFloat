@@ -25,6 +25,7 @@ typedef NS_ENUM(NSUInteger, POHandleLayoutMode) {
 @property (nonatomic, weak) id <POHandleDelegate> delegate;
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic) BOOL isNubbed;
+@property (nonatomic) BOOL autoHiddenByApp;   // 因 App 前台被自动收起（回桌面自动恢复）
 @property (nonatomic) CGFloat restingOriginX;
 @property (nonatomic) POHandleLayoutMode layoutMode;
 
