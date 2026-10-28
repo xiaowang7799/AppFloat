@@ -5,6 +5,7 @@ static NSString *const kAxsAppFloatDomain = @"com.axs.appfloat";
 
 @interface AxsAppFloatConfig ()
 @property (nonatomic, strong) NSDictionary *snapshot;
+- (void)axs_appfloat_reload;
 @end
 
 static void axs_appfloat_reload(CFNotificationCenterRef center, void *observer,
