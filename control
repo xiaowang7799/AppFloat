@@ -1,9 +1,0 @@
-Package: com.axs.appfloat
-Name: 浮窗工坊
-Version: 1.0.0
-Architecture: iphoneos-arm
-Description: iPhone 分屏/悬浮窗：右边缘滑出应用面板，任意 App 开进可拖动缩放的浮窗，贴边吸附 50/50 分屏，场景实时保活。
-Maintainer: 搞机群友:三叶草
-Author: 搞机群友:三叶草
-Section: Tweaks
-Depends: mobilesubstrate, preferenceloader
