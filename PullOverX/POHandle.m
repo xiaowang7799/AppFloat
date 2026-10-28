@@ -27,6 +27,7 @@
     CADisplayLink *flyLink;
     CGFloat flyPhaseX, flyPhaseY;
     CGFloat flyVX, flyVY;
+    CFTimeInterval butterflyRestUntil, butterflyNextRestAt;
     BOOL butterflyFlying;
     UITapGestureRecognizer *butterflyTap;
     UITapGestureRecognizer *_tapGestureRecognizer;
@@ -375,10 +376,12 @@ static UIImage *POStarImage(void) {
 -(void)butterflyTakeOff{
     if (butterflyFlying || !self.window) return;
     butterflyFlying = YES;
-    // 换到窗口层（满屏飞）。
+    // 换到窗口层（满屏飞）。注意用 center 驱动——frame+transform 会互相打架（飞走 bug 根因）。
     CGRect start = [self convertRect:butterflyCarrier.frame toView:self.window];
     [self.window addSubview:butterflyCarrier];
-    butterflyCarrier.frame = start;
+    butterflyCarrier.transform = CGAffineTransformIdentity;
+    butterflyCarrier.bounds = CGRectMake(0, 0, 44, 44);
+    butterflyCarrier.center = CGPointMake(CGRectGetMidX(start), CGRectGetMidY(start));
     butterflyCarrier.userInteractionEnabled = YES;   // 飞行中点击=回家
     [self cancelButterflyRetakeoff];
     // 初速与相位。
@@ -386,6 +389,8 @@ static UIImage *POStarImage(void) {
     flyPhaseY = ((CGFloat)arc4random() / UINT32_MAX) * 6.28f;
     flyVX = ((CGFloat)arc4random() / UINT32_MAX) * 2.0f - 1.0f;
     flyVY = ((CGFloat)arc4random() / UINT32_MAX) * 2.0f - 1.0f;
+    butterflyRestUntil = 0;
+    butterflyNextRestAt = CACurrentMediaTime() + 5.0 + ((double)arc4random() / UINT32_MAX) * 5.0;
     if (!flyLink) {
         flyLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(butterflyFlyTick)];
         [flyLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
@@ -395,25 +400,43 @@ static UIImage *POStarImage(void) {
 
 -(void)butterflyFlyTick{
     if (!butterflyFlying || !butterflyCarrier.superview) { flyLink.paused = YES; return; }
+    NSDictionary *settings = [POApplicationHelper settings];
     UIView *canvas = butterflyCarrier.superview;
     CGRect b = canvas.bounds;
-    CGRect f = butterflyCarrier.frame;
-    // 正弦扰动漫游（平滑转向）+ 边界反弹。
+    CFTimeInterval now = CACurrentMediaTime();
+    BOOL restOn = [settings[@"butterflyRestOn"] boolValue];
+    // 停歇：到点落下歇脚（翅膀照常扇），歇完继续飞。
+    if (restOn) {
+        if (now < butterflyRestUntil) return;
+        if (butterflyNextRestAt > 0 && now >= butterflyNextRestAt) {
+            double restTime = MIN(MAX([settings[@"butterflyRestTime"] doubleValue], 1.0), 5.0);
+            butterflyRestUntil = now + restTime;
+            butterflyNextRestAt = butterflyRestUntil + 6.0 + ((double)arc4random() / UINT32_MAX) * 8.0;
+            return;
+        }
+    }
+    // 正弦扰动漫游（平滑转向）+ 速度/高度范围设置。
     flyPhaseX += 0.028f;
     flyPhaseY += 0.023f;
     flyVX += (CGFloat)(sin(flyPhaseX) * 0.09);
     flyVY += (CGFloat)(cos(flyPhaseY) * 0.09);
-    CGFloat speed = 2.1;
+    double speedSetting = MIN(MAX([settings[@"butterflyFlySpeed"] doubleValue], 0.5), 3.0);
+    CGFloat speed = (CGFloat)(1.6 * speedSetting);
     CGFloat mag = (CGFloat)sqrt(flyVX * flyVX + flyVY * flyVY);
     if (mag > 0.001) { flyVX = flyVX / mag * speed; flyVY = flyVY / mag * speed; }
-    f.origin.x += flyVX;
-    f.origin.y += flyVY;
-    CGFloat inset = 18.0;
-    if (f.origin.x < inset) { f.origin.x = inset; flyVX = fabs(flyVX); }
-    if (f.origin.y < inset + 40) { f.origin.y = inset + 40; flyVY = fabs(flyVY); }
-    if (f.origin.x > b.size.width - f.size.width - inset) { f.origin.x = b.size.width - f.size.width - inset; flyVX = -fabs(flyVX); }
-    if (f.origin.y > b.size.height - f.size.height - inset) { f.origin.y = b.size.height - f.size.height - inset; flyVY = -fabs(flyVY); }
-    butterflyCarrier.frame = f;
+    // center 驱动（避免 frame+transform 冲突）。
+    CGPoint c = butterflyCarrier.center;
+    c.x += flyVX;
+    c.y += flyVY;
+    CGFloat halfW = butterflyCarrier.bounds.size.width / 2.0 + 18.0;
+    CGFloat minY = 78.0;   // 状态栏下
+    double range = MIN(MAX([settings[@"butterflyFlyRange"] doubleValue], 0.3), 1.0);
+    CGFloat maxY = minY + (CGFloat)((b.size.height - minY - 24.0) * range);
+    if (c.x < halfW) { c.x = halfW; flyVX = fabs(flyVX); }
+    if (c.x > b.size.width - halfW) { c.x = b.size.width - halfW; flyVX = -fabs(flyVX); }
+    if (c.y < minY) { c.y = minY; flyVY = fabs(flyVY); }
+    if (c.y > maxY) { c.y = maxY; flyVY = -fabs(flyVY); }
+    butterflyCarrier.center = c;
     // 朝向飞行方向（蝴蝶图头朝上，转角 -π/2 对齐）。
     if (fabs(flyVX) > 0.05 || fabs(flyVY) > 0.05) {
         CGFloat angle = (CGFloat)atan2(flyVY, flyVX) + (CGFloat)M_PI_2;
@@ -452,7 +475,9 @@ static UIImage *POStarImage(void) {
 
 -(void)scheduleButterflyRetakeoff{
     [self cancelButterflyRetakeoff];
-    [self performSelector:@selector(butterflyRetakeoffIfIdle) withObject:nil afterDelay:4.0];
+    double interval = MIN(MAX([[[POApplicationHelper settings] objectForKey:@"butterflyTakeoffInterval"] doubleValue], 0), 20);
+    if (interval <= 0.01) return;   // 0 = 不自动起飞
+    [self performSelector:@selector(butterflyRetakeoffIfIdle) withObject:nil afterDelay:interval];
 }
 -(void)cancelButterflyRetakeoff{
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(butterflyRetakeoffIfIdle) object:nil];
