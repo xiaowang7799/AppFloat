@@ -51,11 +51,30 @@
     overlay.hidden = NO;
     self.overlay = (AxsAppFloatOverlayWindow *)overlay;
 
-    // 右边缘滑出应用面板。
+    // 右边缘滑出应用面板（备用触发；系统手势可能截走）。
     UIScreenEdgePanGestureRecognizer *edge = [[UIScreenEdgePanGestureRecognizer alloc]
         initWithTarget:self action:@selector(handleEdge:)];
     edge.edges = UIRectEdgeRight;
     [overlay addGestureRecognizer:edge];
+
+    // 主触发：右缘可见手柄（点一下弹面板，可上下拖动换位置）。
+    // 手势方案受系统边缘手势/方向歧义影响，手柄点击100%可靠。
+    UIView *handle = [[UIView alloc] initWithFrame:
+        CGRectMake(screen.size.width - 12, screen.size.height * 0.36, 10, 72)];
+    handle.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin
+        | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
+    handle.backgroundColor = [UIColor colorWithWhite:1 alpha:0.38];
+    handle.layer.cornerRadius = 5;
+    handle.layer.borderWidth = 1;
+    handle.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.35].CGColor;
+    handle.tag = 8801;
+    [overlay addSubview:handle];
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]
+        initWithTarget:self action:@selector(handleTapped)];
+    [handle addGestureRecognizer:tap];
+    UIPanGestureRecognizer *drag = [[UIPanGestureRecognizer alloc]
+        initWithTarget:self action:@selector(handleDrag:)];
+    [handle addGestureRecognizer:drag];
 
     // 保活定时器：场景前台续约（1.5s，几乎零开销）。
     self.keepAliveTimer = [NSTimer scheduledTimerWithTimeInterval:1.5 repeats:YES
@@ -72,6 +91,29 @@
 - (void)handleEdge:(UIScreenEdgePanGestureRecognizer *)pan {
     if (pan.state == UIGestureRecognizerStateBegan) {
         [self presentPicker];
+    }
+}
+
+- (void)handleTapped {
+    [self presentPicker];
+}
+
+- (void)handleDrag:(UIPanGestureRecognizer *)pan {
+    UIView *handle = pan.view;
+    if (!handle) return;
+    CGPoint t = [pan translationInView:handle.superview];
+    handle.center = CGPointMake(handle.center.x, handle.center.y + t.y);
+    [pan setTranslation:CGPointZero inView:handle.superview];
+    if (pan.state == UIGestureRecognizerStateEnded) {
+        // 贴边限位，松手回弹到最近边缘附近。
+        CGRect b = handle.superview.bounds;
+        CGFloat minY = 90, maxY = b.size.height - 90;
+        if (handle.center.y < minY || handle.center.y > maxY) {
+            [UIView animateWithDuration:0.2 animations:^{
+                handle.center = CGPointMake(handle.center.x,
+                    MAX(minY, MIN(maxY, handle.center.y)));
+            }];
+        }
     }
 }
 
@@ -122,7 +164,28 @@
 - (void)presentPicker {
     if (self.pickerPanel) { [self dismissPicker]; return; }
     NSArray<NSDictionary *> *apps = [self runningApps];
-    if (apps.count == 0) return;
+    if (apps.count == 0) {
+        // 证明插件存活：即使没有后台应用也弹面板。
+        CGRect screen = self.overlay.bounds;
+        UIView *panel = [[UIView alloc] initWithFrame:
+            CGRectMake(screen.size.width - 260, screen.size.height / 2.0 - 40, 250, 80)];
+        panel.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.96];
+        panel.layer.cornerRadius = 18;
+        UILabel *msg = [[UILabel alloc] initWithFrame:panel.bounds];
+        msg.text = @"没有后台运行的应用\n先打开一个 App 试试";
+        msg.textColor = [UIColor whiteColor];
+        msg.font = [UIFont systemFontOfSize:13];
+        msg.numberOfLines = 2;
+        msg.textAlignment = NSTextAlignmentCenter;
+        [panel addSubview:msg];
+        [self.overlay addSubview:panel];
+        self.pickerPanel = panel;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            [self dismissPicker];
+        });
+        return;
+    }
 
     CGRect screen = self.overlay.bounds;
     CGFloat rowH = 64.0;
