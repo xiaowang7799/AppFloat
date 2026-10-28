@@ -133,6 +133,20 @@
 
 #pragma mark - 应用面板
 
+// 白名单（设置里勾选的 app:<bundleID>）；空 = 全部。
+- (NSSet<NSString *> *)enabledApps {
+    NSString *path = [NSHomeDirectory() stringByAppendingPathComponent:
+        @"Library/Preferences/com.axs.appfloat.plist"];
+    NSDictionary *prefs = [NSDictionary dictionaryWithContentsOfFile:path];
+    NSMutableSet *set = [NSMutableSet set];
+    for (NSString *key in prefs) {
+        if ([key hasPrefix:@"app:"] && [prefs[key] boolValue]) {
+            [set addObject:[key substringFromIndex:4]];
+        }
+    }
+    return set;
+}
+
 - (NSArray<NSDictionary *> *)runningApps {
     NSMutableArray *result = [NSMutableArray array];
     Class cls = NSClassFromString(@"SBApplicationController");
@@ -184,6 +198,15 @@
         }
         // 运行中检测失效时回退全部应用（永远可选，场景不在线窗口里会给状态提示）。
         if (result.count == 0) [result addObjectsFromArray:all];
+        // 白名单过滤（设置里勾选的 App 才出现；全不勾 = 全部）。
+        NSSet<NSString *> *whitelist = [self enabledApps];
+        if (whitelist.count > 0) {
+            NSMutableArray *filtered = [NSMutableArray array];
+            for (NSDictionary *entry in result) {
+                if ([whitelist containsObject:entry[@"bundleID"]]) [filtered addObject:entry];
+            }
+            return filtered;
+        }
     } @catch (__unused NSException *e) {}
     return result;
 }

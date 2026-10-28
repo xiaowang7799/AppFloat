@@ -17,6 +17,17 @@
 			<key>default</key><true/>
 		</dict>
 		<dict>
+			<key>cell</key><string>PSGroupCell</string>
+			<key>label</key><string>浮窗应用</string>
+			<key>footerText</key><string>选择哪些 App 出现在浮窗面板里；不选 = 全部显示。</string>
+		</dict>
+		<dict>
+			<key>cell</key><string>PSLinkCell</string>
+			<key>label</key><string>选择浮窗应用…</string>
+			<key>detail</key><string>AxsAppFloatAppListController</string>
+			<key>isController</key><true/>
+		</dict>
+		<dict>
 			<key>cell</key><string>PSSwitchCell</string>
 			<key>label</key><string>贴边吸附分屏</string>
 			<key>key</key><string>snap_on</string>

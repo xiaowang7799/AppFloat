@@ -58,6 +58,120 @@ static NSString *const kAxsAppFloatRequester = @"AppFloat";
     return nil;
 }
 
+// ── 场景管理器扫描（iOS 17 上 mainScene 常找不到，需要这层） ──
+
+- (id)sbMainDisplaySceneManager {
+    for (NSString *cn in @[@"SBSceneManagerCoordinator", @"SBMainDisplaySceneManager"]) {
+        Class cls = NSClassFromString(cn);
+        if (!cls) continue;
+        if ([cls respondsToSelector:NSSelectorFromString(@"sharedInstance")]) {
+            id obj = ((id (*)(id, SEL))objc_msgSend)(cls, NSSelectorFromString(@"sharedInstance"));
+            if ([cn isEqualToString:@"SBSceneManagerCoordinator"] && obj) {
+                @try {
+                    id m = [obj valueForKey:@"mainDisplaySceneManager"];
+                    if (m) return m;
+                } @catch (__unused NSException *e) {}
+            }
+            if (obj) return obj;
+        }
+        if ([cls respondsToSelector:NSSelectorFromString(@"mainDisplaySceneManager")]) {
+            id obj = ((id (*)(id, SEL))objc_msgSend)(cls, NSSelectorFromString(@"mainDisplaySceneManager"));
+            if (obj) return obj;
+        }
+    }
+    return nil;
+}
+
+- (NSArray *)arrayFromCollection:(id)result {
+    if ([result isKindOfClass:[NSSet class]]) return [result allObjects];
+    if ([result isKindOfClass:[NSOrderedSet class]]) return [result array];
+    if ([result isKindOfClass:[NSArray class]]) return result;
+    if ([result isKindOfClass:[NSDictionary class]]) return [result allValues];
+    return @[];
+}
+
+- (BOOL)object:(id)obj matchesBundleID:(NSString *)bid {
+    if (!obj || !bid.length) return NO;
+    NSArray *keys = @[@"identifier", @"sceneIdentifier", @"persistentIdentifier",
+                      @"clientIdentifier", @"bundleIdentifier",
+                      @"applicationBundleIdentifier", @"_identifier"];
+    for (NSString *key in keys) {
+        @try {
+            id val = [obj valueForKey:key];
+            if ([val isKindOfClass:[NSString class]] && [val containsString:bid]) return YES;
+        } @catch (__unused NSException *e) {}
+    }
+    for (NSString *key in @[@"application", @"clientProcess", @"definition", @"sceneIdentity"]) {
+        @try {
+            id nested = [obj valueForKey:key];
+            if (!nested || nested == obj) continue;
+            for (NSString *nk in @[@"bundleIdentifier", @"identifier",
+                                    @"applicationBundleIdentifier"]) {
+                @try {
+                    id val = [nested valueForKey:nk];
+                    if ([val isKindOfClass:[NSString class]] && [val containsString:bid]) return YES;
+                } @catch (__unused NSException *e) {}
+            }
+        } @catch (__unused NSException *e) {}
+    }
+    return NO;
+}
+
+- (NSArray *)allScenesFromManager:(id)manager {
+    if (!manager) return @[];
+    NSMutableArray *out = [NSMutableArray array];
+    for (NSString *name in @[@"scenes", @"_scenes"]) {
+        SEL sel = NSSelectorFromString(name);
+        if (![manager respondsToSelector:sel]) continue;
+        id result = ((id (*)(id, SEL))objc_msgSend)(manager, sel);
+        [out addObjectsFromArray:[self arrayFromCollection:result]];
+    }
+    for (NSString *name in @[@"scenesByID", @"_scenesByID", @"sceneMap"]) {
+        SEL sel = NSSelectorFromString(name);
+        if (![manager respondsToSelector:sel]) continue;
+        id map = ((id (*)(id, SEL))objc_msgSend)(manager, sel);
+        [out addObjectsFromArray:[self arrayFromCollection:map]];
+    }
+    return out;
+}
+
+// 通过场景管理器找 handle（含 sceneHandleForIdentifier: 常见 id 形态）。
+- (id)sceneHandleViaManagers {
+    for (id sbm in @[[self sbMainDisplaySceneManager] ?: (id)[NSNull null]]) {
+        if (sbm == (id)[NSNull null]) continue;
+        for (NSString *name in @[@"externalForegroundApplicationSceneHandles",
+                                 @"externalApplicationSceneHandles",
+                                 @"applicationSceneHandles", @"sceneHandles"]) {
+            @try {
+                SEL sel = NSSelectorFromString(name);
+                id set = [sbm respondsToSelector:sel]
+                    ? ((id (*)(id, SEL))objc_msgSend)(sbm, sel) : [sbm valueForKey:name];
+                for (id handle in [self arrayFromCollection:set]) {
+                    if ([self object:handle matchesBundleID:self.bundleID]) return handle;
+                }
+            } @catch (__unused NSException *e) {}
+        }
+        for (NSString *name in @[@"sceneHandleForIdentifier:",
+                                 @"existingSceneHandleForPersistenceIdentifier:",
+                                 @"sceneHandleForSceneIdentity:"]) {
+            SEL sel = NSSelectorFromString(name);
+            if (![sbm respondsToSelector:sel]) continue;
+            NSArray *candidates = @[
+                self.bundleID,
+                [NSString stringWithFormat:@"sceneID:%@-default", self.bundleID],
+                [NSString stringWithFormat:@"%@-default", self.bundleID],
+            ];
+            for (NSString *cid in candidates) {
+                @try {
+                    id h = ((id (*)(id, SEL, id))objc_msgSend)(sbm, sel, cid);
+                    if (h) return h;
+                } @catch (__unused NSException *e) {}
+            }
+        }
+    }
+    return nil;
+}
+
 - (id)findFBScene {
     id app = [self sbApplication];
     if (!app) return nil;
@@ -105,6 +219,21 @@ static NSString *const kAxsAppFloatRequester = @"AppFloat";
             return inner ?: arr.firstObject;
         }
     } @catch (__unused NSException *e) {}
+
+    // 3) 场景管理器扫描（iOS 17 上 mainScene 常缺，这里兜住）。
+    id handle = [self sceneHandleViaManagers];
+    if (handle) {
+        self.sceneHandle = handle;
+        id scene = [self fbSceneFromHandle:handle];
+        if (scene) return scene;
+    }
+    id sbm = [self sbMainDisplaySceneManager];
+    for (id s in [self allScenesFromManager:sbm]) {
+        if ([self object:s matchesBundleID:self.bundleID]) {
+            id inner = [self fbSceneFromHandle:s];
+            return inner ?: s;
+        }
+    }
     return nil;
 }
 
@@ -247,6 +376,27 @@ static NSString *const kAxsAppFloatRequester = @"AppFloat";
                 if ([v isKindOfClass:[UIView class]]) return v;
             }
         } @catch (__unused NSException *e) {}
+    }
+    // newSceneViewWithReferenceSize: 变体（返回裸视图）。
+    SEL viewSel = NSSelectorFromString(@"newSceneViewWithReferenceSize:orientation:hostRequester:");
+    if ([handle respondsToSelector:viewSel]) {
+        NSMethodSignature *sig = [handle methodSignatureForSelector:viewSel];
+        if (sig) {
+            @try {
+                NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
+                inv.target = handle;
+                inv.selector = viewSel;
+                [inv setArgument:&s atIndex:2];
+                long long o = 1;
+                [inv setArgument:&o atIndex:3];
+                NSString *req = kAxsAppFloatRequester;
+                [inv setArgument:&req atIndex:4];
+                [inv invoke];
+                __unsafe_unretained id result = nil;
+                [inv getReturnValue:&result];
+                if ([result isKindOfClass:[UIView class]]) return result;
+            } @catch (__unused NSException *e) {}
+        }
     }
     return nil;
 }

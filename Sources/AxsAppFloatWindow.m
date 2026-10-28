@@ -44,18 +44,12 @@ static const CGFloat kHeaderHeight = 36.0;
         [self addSubview:_header];
 
         UIImageView *iconView = [[UIImageView alloc] initWithImage:icon];
-        iconView.frame = CGRectMake(10, 8, 20, 20);
+        iconView.frame = CGRectMake(12, 6, 24, 24);
         iconView.contentMode = UIViewContentModeScaleAspectFit;
-        iconView.layer.cornerRadius = 5;
+        iconView.layer.cornerRadius = 6;
         iconView.layer.masksToBounds = YES;
         [_header addSubview:iconView];
-
-        _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(38, 0, frame.size.width - 120, kHeaderHeight)];
-        _titleLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-        _titleLabel.text = name;
-        _titleLabel.textColor = [UIColor whiteColor];
-        _titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
-        [_header addSubview:_titleLabel];
+        // 标题栏只显示图标（不显示应用名）。
 
         UIButton *maxBtn = [UIButton buttonWithType:UIButtonTypeSystem];
         maxBtn.frame = CGRectMake(frame.size.width - 114, 0, 38, kHeaderHeight);

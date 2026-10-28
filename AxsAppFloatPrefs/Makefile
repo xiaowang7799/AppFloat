@@ -4,7 +4,7 @@ include $(THEOS)/makefiles/common.mk
 BUNDLE_NAME = AxsAppFloatPrefs
 AxsAppFloatPrefs_FILES = $(wildcard *.m)
 AxsAppFloatPrefs_CFLAGS = -fobjc-arc -I../Sources
-AxsAppFloatPrefs_FRAMEWORKS = UIKit Foundation CoreFoundation
+AxsAppFloatPrefs_FRAMEWORKS = UIKit Foundation CoreFoundation MobileCoreServices
 AxsAppFloatPrefs_PRIVATE_FRAMEWORKS = Preferences
 AxsAppFloatPrefs_INSTALL_PATH = /Library/PreferenceBundles
 
