@@ -46,7 +46,17 @@
     if (self.overlay) return;
     CGRect screen = [UIScreen mainScreen].bounds;
     UIWindow *overlay = [[AxsAppFloatOverlayWindow alloc] initWithFrame:screen];
-    overlay.windowLevel = UIWindowLevelStatusBar - 1.0;   // App 之上、系统弹窗之下
+    // iOS 13+ 多场景：必须显式绑定 windowScene，否则窗口可能永远不显示
+    //（SpringBoard 有多个 scene 时不会自动绑定）。
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                overlay.windowScene = (UIWindowScene *)scene;
+                break;
+            }
+        }
+    }
+    overlay.windowLevel = 1500.0;   // 高于普通窗口，低于系统弹窗
     overlay.backgroundColor = [UIColor clearColor];
     overlay.hidden = NO;
     self.overlay = (AxsAppFloatOverlayWindow *)overlay;
@@ -60,13 +70,16 @@
     // 主触发：右缘可见手柄（点一下弹面板，可上下拖动换位置）。
     // 手势方案受系统边缘手势/方向歧义影响，手柄点击100%可靠。
     UIView *handle = [[UIView alloc] initWithFrame:
-        CGRectMake(screen.size.width - 12, screen.size.height * 0.36, 10, 72)];
+        CGRectMake(screen.size.width - 16, screen.size.height * 0.34, 14, 88)];
     handle.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin
         | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
-    handle.backgroundColor = [UIColor colorWithWhite:1 alpha:0.38];
-    handle.layer.cornerRadius = 5;
-    handle.layer.borderWidth = 1;
-    handle.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.35].CGColor;
+    handle.backgroundColor = [UIColor colorWithRed:0.35 green:0.72 blue:1.0 alpha:0.75];
+    handle.layer.cornerRadius = 7;
+    handle.layer.borderWidth = 1.5;
+    handle.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.6].CGColor;
+    handle.layer.shadowColor = [UIColor blackColor].CGColor;
+    handle.layer.shadowOpacity = 0.4;
+    handle.layer.shadowRadius = 6;
     handle.tag = 8801;
     [overlay addSubview:handle];
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]
