@@ -1,15 +1,12 @@
-Package: com.mlgm.pulloverx
-Name: PullOver X
-Version: 1.7
-Description: 悬浮多任务窗口工具，基于 Pullover Pro 进行修改
+Package: com.axs.pulloverx
+Name: 浮窗工坊
+Version: 2.0
+Description: 悬浮多任务窗口工具：拉杆呼出悬浮窗、真分屏、快速切换（基于 PullOver X / PullOver Pro，GPL-3.0）
 Section: Tweaks
 Depends: firmware (>= 14.0), mobilesubstrate, preferenceloader, com.opa334.altlist
-Conflicts: com.dao.pulloverpro, com.c1d3r.pulloverpro
-Replaces: com.dao.pulloverpro, com.c1d3r.pulloverpro
+Conflicts: com.dao.pulloverpro, com.c1d3r.pulloverpro, com.mlgm.pulloverx, com.axs.appfloat
+Replaces: com.dao.pulloverpro, com.c1d3r.pulloverpro, com.mlgm.pulloverx
 Priority: optional
 Architecture: iphoneos-arm
-Author: mlgm
-dev: mlgm
-Icon: https://mlgm66.github.io/icon/pullover.png
-SileoDepiction: https://mlgm66.github.io/depictions/com.mlgm.pulloverx/depiction.json
-Maintainer: mlgm
+Author: 搞机群友:三叶草（基于 mlgm / c1d3rDev 的 PullOver X，GPL-3.0）
+Maintainer: 搞机群友:三叶草

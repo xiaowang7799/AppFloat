@@ -117,7 +117,7 @@ static void POReconcileCommittedInterfaceOrientation(NSString *trigger,
                                                       NSTimeInterval duration,
                                                       BOOL applyOrdinarySettings);
 
-static CFStringRef const kPOSettingsChangedNotification = CFSTR("com.mlgm.pulloverx.settings-changed");
+static CFStringRef const kPOSettingsChangedNotification = CFSTR("com.axs.pulloverx.settings-changed");
 
 static BOOL POSettingsEnabled(NSDictionary *settings) {
     id enabled = settings[@"enabled"];

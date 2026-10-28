@@ -11,7 +11,7 @@
 		<key>icon</key>
 		<string>PullOverXPreferencesIcon.png</string>
 		<key>label</key>
-		<string>PullOver X</string>
+		<string>浮窗工坊</string>
 		<key>isController</key>
 		<true/>
 	</dict>

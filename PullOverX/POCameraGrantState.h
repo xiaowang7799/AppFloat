@@ -1,8 +1,8 @@
 #import <Foundation/Foundation.h>
 
-static NSString * const POCameraGrantDomain = @"com.mlgm.pulloverx";
+static NSString * const POCameraGrantDomain = @"com.axs.pulloverx";
 static NSString * const POCameraGrantBundleIdentifierKey = @"__cameraForegroundGrantBundleId";
-static NSString * const POCameraGrantStateChangedNotification = @"com.mlgm.pulloverx.camera-state-changed";
+static NSString * const POCameraGrantStateChangedNotification = @"com.axs.pulloverx.camera-state-changed";
 static NSString *POCameraCachedGrantBundleIdentifier;
 static CFAbsoluteTime POCameraGrantCacheTimestamp;
 static BOOL POCameraGrantCacheValid;

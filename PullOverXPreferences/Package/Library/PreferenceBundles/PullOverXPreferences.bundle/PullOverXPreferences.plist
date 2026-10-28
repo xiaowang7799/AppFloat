@@ -28,7 +28,7 @@
 			<key>requiresRespring</key>
 			<true/>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -64,7 +64,7 @@
 				<string>Favorite Apps</string>
 			</array>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -90,7 +90,7 @@
 			<key>stepValue</key>
 			<integer>1</integer>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>get</key>
 			<string>getValueForSpecifier:</string>
 			<key>set</key>
@@ -118,7 +118,7 @@
 			<key>stepValue</key>
 			<integer>1</integer>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>get</key>
 			<string>getValueForSpecifier:</string>
 			<key>set</key>
@@ -150,7 +150,7 @@
 			<key>label</key>
 			<string>Hide Handle When Taking Screenshot</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -166,7 +166,7 @@
 			<key>label</key>
 			<string>Hide QuickSwitch Labels</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -182,7 +182,7 @@
 			<key>label</key>
 			<string>Handle Size</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>get</key>
 			<string>getValueForSpecifier:</string>
 			<key>set</key>
@@ -204,7 +204,7 @@
 			<key>label</key>
 			<string>Handle Hidden Percentage</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>get</key>
 			<string>getValueForSpecifier:</string>
 			<key>set</key>
@@ -250,7 +250,7 @@
 				<string>Hide</string>
 			</array>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -266,7 +266,7 @@
 			<key>label</key>
 			<string>Haptic Feedback</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -282,7 +282,7 @@
 			<key>label</key>
 			<string>Sound Feedback</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -298,7 +298,7 @@
 			<key>label</key>
 			<string>Keyboard Avoiding</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -314,7 +314,7 @@
 			<key>label</key>
 			<string>Enlarge Keyboard in Landscape</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -330,7 +330,7 @@
 			<key>label</key>
 			<string>URL Routing</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -342,7 +342,7 @@
 			<key>default</key>
 			<array/>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>detail</key>
 			<string>POApplicationWhitelistController</string>
 			<key>id</key>
@@ -371,7 +371,7 @@
 			<key>includeIdentifiersInSearch</key>
 			<true/>
 			<key>PostNotification</key>
-			<string>com.mlgm.pulloverx.settings-changed</string>
+			<string>com.axs.pulloverx.settings-changed</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -391,7 +391,7 @@
 			<key>label</key>
 			<string>Handle Activation Guard</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -407,7 +407,7 @@
 			<key>label</key>
 			<string>Auto-Nub Handle when Inactive</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
 			<key>get</key>
@@ -423,83 +423,11 @@
 			<key>label</key>
 			<string>Nub After</string>
 			<key>defaults</key>
-			<string>com.mlgm.pulloverx</string>
+			<string>com.axs.pulloverx</string>
 			<key>get</key>
 			<string>getValueForSpecifier:</string>
 			<key>set</key>
 			<string>setValue:forSpecifier:</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>isStaticText</key>
-			<true/>
-			<key>label</key>
-			<string>Extra Stuff</string>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>POProfileLinkCell</string>
-			<key>icon</key>
-			<string>twitter.png</string>
-			<key>label</key>
-			<string>Follow @c1d3rDev (Developer)</string>
-			<key>url</key>
-			<string>https://twitter.com/c1d3rdev</string>
-			<key>height</key>
-			<integer>44</integer>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>POProfileLinkCell</string>
-			<key>icon</key>
-			<string>akusio_RR.png</string>
-			<key>label</key>
-			<string>@akusio_RR (helped with iOS 13 support)</string>
-			<key>url</key>
-			<string>https://twitter.com/akusio_RR</string>
-			<key>height</key>
-			<integer>44</integer>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>POProfileLinkCell</string>
-			<key>icon</key>
-			<string>mlgm.png</string>
-			<key>label</key>
-			<string>mlgm (iOS 14+ Adaptation)</string>
-			<key>url</key>
-			<string>https://x.com/mlgm66</string>
-			<key>height</key>
-			<integer>44</integer>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>POProfileLinkCell</string>
-			<key>icon</key>
-			<string>paypal.png</string>
-			<key>label</key>
-			<string>Donate (Original Developer)</string>
-			<key>url</key>
-			<string>https://paypal.me/willsmillie</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Currently Maintained</string>
-			<key>footerText</key>
-			<string>This version was modified by mlgm based on PullOver Pro.</string>
-		</dict>
-		<dict>
-			<key>cellClass</key>
-			<string>POLinkCell</string>
-			<key>label</key>
-			<string>Current Version Source</string>
-			<key>url</key>
-			<string>https://github.com/mlgm66/PullOver-X</string>
-			<key>height</key>
-			<integer>44</integer>
 		</dict>
 	</array>
 </dict>

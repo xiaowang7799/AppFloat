@@ -287,7 +287,7 @@ static void POSortIdentifiersByName(NSMutableArray<NSString *> *identifiers,
     [defaults setObject:enabledApps forKey:@"favorites"];
     [defaults synchronize];
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         CFSTR("com.mlgm.pulloverx.settings-changed"),
+                                         CFSTR("com.axs.pulloverx.settings-changed"),
                                          NULL,
                                          NULL,
                                          true);
@@ -482,7 +482,7 @@ static void POSortIdentifiersByName(NSMutableArray<NSString *> *identifiers,
 #pragma mark - Persistence helper
 
 - (NSUserDefaults *)settingsDefaults{
-    return [[NSUserDefaults alloc] initWithSuiteName:@"com.mlgm.pulloverx"];
+    return [[NSUserDefaults alloc] initWithSuiteName:@"com.axs.pulloverx"];
 }
 
 @end

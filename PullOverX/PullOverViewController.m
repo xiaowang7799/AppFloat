@@ -3756,7 +3756,7 @@ static CGFloat POPresentationAngleForOrientation(UIInterfaceOrientation orientat
     BOOL leftHanded = [defaults boolForKey:@"leftHanded"];
     [defaults setBool:!leftHanded forKey:@"leftHanded"];
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                         CFSTR("com.mlgm.pulloverx.settings-changed"),
+                                         CFSTR("com.axs.pulloverx.settings-changed"),
                                          NULL, NULL, YES);
 }
 

@@ -51,7 +51,7 @@ jobs:
 
       - name: Bump Package Version
         run: |
-          VERSION="1.7.${{ github.run_number }}"
+          VERSION="2.0.${{ github.run_number }}"
           echo "Using version: $VERSION"
           sed -i '' "s/^Version: .*/Version: ${VERSION}/" PullOverX/Package/DEBIAN/control
 
@@ -81,6 +81,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ github.token }}
-          tag_name: v1.7.${{ github.run_number }}
-          name: "PullOver X (复刻) v1.7.${{ github.run_number }}"
+          tag_name: v2.0.${{ github.run_number }}
+          name: "浮窗工坊 v2.0.${{ github.run_number }}"
           files: ./packages/*.deb

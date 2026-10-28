@@ -34,7 +34,7 @@ typedef NS_OPTIONS(NSUInteger, SBSRelaunchActionOptions) {
 #define kPrefs_KeyName_Key @"key"
 #define kPrefs_KeyName_Defaults @"defaults"
 
-static NSString * const kPOSettingsChangedNotification = @"com.mlgm.pulloverx.settings-changed";
+static NSString * const kPOSettingsChangedNotification = @"com.axs.pulloverx.settings-changed";
 static NSString * const kPOEnabledPendingRespringKey = @"enabled-respring-pending";
 
 #pragma mark - POValueSliderTableCell

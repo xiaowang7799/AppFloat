@@ -31,7 +31,7 @@ enum {
 - (void)invalidate;
 @end
 
-static NSString * const kPORequester = @"com.mlgm.pulloverx";
+static NSString * const kPORequester = @"com.axs.pulloverx";
 
 static BOOL POIsIOS26SceneLayerHostContainerView(UIView *view) {
     if (!view) {

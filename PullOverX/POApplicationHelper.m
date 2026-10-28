@@ -305,7 +305,7 @@ static id POSharedObjectForClass(Class cls) {
     static NSUserDefaults *defaults;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        defaults = [[NSUserDefaults alloc] initWithSuiteName:@"com.mlgm.pulloverx"];
+        defaults = [[NSUserDefaults alloc] initWithSuiteName:@"com.axs.pulloverx"];
         [defaults registerDefaults:@{
             @"enabled": @YES,
             @"favorites": @[],
