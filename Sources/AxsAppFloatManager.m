@@ -21,6 +21,7 @@
 @interface AxsAppFloatManager () <UIGestureRecognizerDelegate>
 @property (nonatomic, strong) AxsAppFloatOverlayWindow *overlay;
 @property (nonatomic, strong) UIView *pickerPanel;
+@property (nonatomic, copy) NSArray<NSDictionary *> *pickerApps;   // 面板列表快照
 @property (nonatomic, strong) NSMutableArray<AxsAppFloatWindow *> *windows;
 @property (nonatomic, strong) NSTimer *keepAliveTimer;
 @end
@@ -141,14 +142,23 @@
         SEL sel = NSSelectorFromString(@"allApplications");
         if (![ctrl respondsToSelector:sel]) return result;
         NSArray *apps = ((id (*)(id, SEL))objc_msgSend)(ctrl, sel);
+        NSMutableArray *all = [NSMutableArray array];
         for (id app in apps) {
             @try {
                 NSString *bid = [app valueForKey:@"bundleIdentifier"];
                 if (!bid.length || [bid isEqualToString:@"com.apple.springboard"]) continue;
+                // 运行中检测：isRunning / pid>0（processState），多路兜底。
+                BOOL running = NO;
                 SEL runSel = NSSelectorFromString(@"isRunning");
-                BOOL running = [app respondsToSelector:runSel]
-                    ? ((BOOL (*)(id, SEL))objc_msgSend)(app, runSel) : NO;
-                if (!running) continue;
+                if ([app respondsToSelector:runSel]) {
+                    running = ((BOOL (*)(id, SEL))objc_msgSend)(app, runSel);
+                }
+                if (!running) {
+                    SEL pidSel = NSSelectorFromString(@"pid");
+                    if ([app respondsToSelector:pidSel]) {
+                        running = ((int (*)(id, SEL))objc_msgSend)(app, pidSel) > 0;
+                    }
+                }
                 NSString *name = [app valueForKey:@"displayName"] ?: bid;
                 UIImage *icon = nil;
                 SEL iconSel = NSSelectorFromString(@"iconImageForFormat:");
@@ -166,10 +176,14 @@
                         if ([img isKindOfClass:[UIImage class]]) icon = img;
                     }
                 }
-                [result addObject:@{@"bundleID": bid, @"name": name,
-                                    @"icon": icon ?: [UIImage systemImageNamed:@"app.fill"]}];
+                NSDictionary *entry = @{@"bundleID": bid, @"name": name,
+                                        @"icon": icon ?: [UIImage systemImageNamed:@"app.fill"]};
+                [all addObject:entry];
+                if (running) [result addObject:entry];
             } @catch (__unused NSException *e) {}
         }
+        // 运行中检测失效时回退全部应用（永远可选，场景不在线窗口里会给状态提示）。
+        if (result.count == 0) [result addObjectsFromArray:all];
     } @catch (__unused NSException *e) {}
     return result;
 }
@@ -223,7 +237,9 @@
     [panel addSubview:scroll];
 
     CGFloat y = 0;
-    for (NSDictionary *app in apps) {
+    self.pickerApps = apps;
+    for (NSInteger ai = 0; ai < (NSInteger)apps.count; ai++) {
+        NSDictionary *app = apps[(NSUInteger)ai];
         UIButton *row = [UIButton buttonWithType:UIButtonTypeCustom];
         row.frame = CGRectMake(8, y, panel.frame.size.width - 16, rowH - 6);
         row.backgroundColor = [UIColor colorWithWhite:1 alpha:0.06];
@@ -240,10 +256,9 @@
         label.textColor = [UIColor whiteColor];
         label.font = [UIFont systemFontOfSize:15];
         [row addSubview:label];
-        NSString *bid = app[@"bundleID"];
         [row addTarget:self action:@selector(rowTapped:)
             forControlEvents:UIControlEventTouchUpInside];
-        row.tag = [self tagForBundleID:bid apps:apps];
+        row.tag = ai;
         [scroll addSubview:row];
         y += rowH;
     }
@@ -269,7 +284,7 @@
 }
 
 - (void)rowTapped:(UIButton *)row {
-    NSArray *apps = [self runningApps];
+    NSArray *apps = self.pickerApps;   // 用面板快照，防止列表变化导致错位
     NSInteger idx = row.tag;
     if (idx >= 0 && idx < (NSInteger)apps.count) {
         [self openApp:apps[(NSUInteger)idx][@"bundleID"]
