@@ -327,6 +327,7 @@ static id POSharedObjectForClass(Class cls) {
             @"panelAlpha": @1.0,
             @"nubInApps": @NO,
             @"nubButterflyOn": @YES,
+            @"butterflyFlyFree": @YES,
             @"landscapeBehavior": @"rotate",
             @"externalURLRoutingEnabled": @NO,
             @"externalURLRoutingWhitelist": @[],

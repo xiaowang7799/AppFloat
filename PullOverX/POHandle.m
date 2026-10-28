@@ -21,8 +21,14 @@
 @interface POHandle () <UIGestureRecognizerDelegate> {
     UILabel *messageLabel;
     UIVisualEffectView *blurView;
+    UIView *butterflyCarrier;
     UIImageView *butterflyView;
     CAEmitterLayer *sparkleLayer;
+    CADisplayLink *flyLink;
+    CGFloat flyPhaseX, flyPhaseY;
+    CGFloat flyVX, flyVY;
+    BOOL butterflyFlying;
+    UITapGestureRecognizer *butterflyTap;
     UITapGestureRecognizer *_tapGestureRecognizer;
     UILongPressGestureRecognizer *quickSwitchLongPress;
     UIPanGestureRecognizer *_panelPanGestureRecognizer;
@@ -283,11 +289,14 @@ static UIImage *POStarImage(void) {
 }
 
 -(void)buildButterflyIfNeeded{
-    if (butterflyView) return;
+    if (butterflyCarrier) return;
+    butterflyCarrier = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 44, 44)];
+    butterflyCarrier.backgroundColor = [UIColor clearColor];
+    butterflyCarrier.userInteractionEnabled = NO;   // 回家状态：点击穿透给手柄
     butterflyView = [[UIImageView alloc] initWithImage:POButterflyImage()];
+    butterflyView.frame = butterflyCarrier.bounds;
     butterflyView.contentMode = UIViewContentModeScaleAspectFit;
-    butterflyView.hidden = YES;
-    [self addSubview:butterflyView];
+    [butterflyCarrier addSubview:butterflyView];
     // 翅膀扇动。
     CAKeyframeAnimation *flap = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale.x"];
     flap.values = @[@1.0, @0.68, @1.0];
@@ -295,11 +304,13 @@ static UIImage *POStarImage(void) {
     flap.repeatCount = HUGE_VALF;
     flap.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [butterflyView.layer addAnimation:flap forKey:@"po_flap"];
-    // 亮晶晶闪粉（加法混合星尘）。
+    // 亮晶晶闪粉（加法混合星尘，随载体走）。
     sparkleLayer = [CAEmitterLayer layer];
+    sparkleLayer.frame = butterflyCarrier.bounds;
     sparkleLayer.emitterShape = kCAEmitterLayerRectangle;
     sparkleLayer.renderMode = kCAEmitterLayerAdditive;
-    sparkleLayer.emitterCells = nil;
+    sparkleLayer.emitterPosition = CGPointMake(22, 22);
+    sparkleLayer.emitterSize = CGSizeMake(38, 38);
     CAEmitterCell *star = [CAEmitterCell emitterCell];
     star.contents = (__bridge id)POStarImage().CGImage;
     star.birthRate = 2.6f;
@@ -314,26 +325,158 @@ static UIImage *POStarImage(void) {
     star.spinRange = 2.0f;
     sparkleLayer.emitterCells = @[star];
     sparkleLayer.opacity = 0;
-    [self.layer addSublayer:sparkleLayer];
+    [butterflyCarrier.layer addSublayer:sparkleLayer];
+    // 飞行中点击 → 回家。
+    butterflyTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(butterflyTapped)];
+    [butterflyCarrier addGestureRecognizer:butterflyTap];
+    butterflyCarrier.hidden = YES;
+    [self addSubview:butterflyCarrier];
+}
+
+// 蝴蝶在家（缩回点）的局部坐标帧。
+-(CGRect)butterflyHomeFrame{
+    CGFloat size = MIN(CGRectGetWidth(self.bounds) * 1.25, 42.0);
+    CGFloat visible = CGRectGetWidth(self.bounds) * (1.0 - [self nubHiddenPercentage] / 100.0);
+    return CGRectMake(visible - size / 2.0 - 2.0, (CGRectGetHeight(self.bounds) - size) / 2.0, size, size);
 }
 
 -(void)updateButterflyForNubbed:(BOOL)nubbed{
     [self buildButterflyIfNeeded];
     BOOL on = nubbed && [[POApplicationHelper settings][@"nubButterflyOn"] boolValue];
-    CGFloat size = MIN(CGRectGetWidth(self.bounds) * 1.25, 42.0);
-    // 停在屏幕边缘可见区（手柄左侧可见部分的中心）。
-    CGFloat visible = CGRectGetWidth(self.bounds) * (1.0 - [self nubHiddenPercentage] / 100.0);
-    CGFloat bx = visible - size / 2.0 - 2.0;
-    CGFloat by = (CGRectGetHeight(self.bounds) - size) / 2.0;
-    butterflyView.frame = CGRectMake(bx, by, size, size);
-    sparkleLayer.frame = butterflyView.frame;
-    sparkleLayer.emitterPosition = CGPointMake(size / 2.0, size / 2.0);
-    sparkleLayer.emitterSize = CGSizeMake(size * 0.9, size * 0.9);
-    butterflyView.hidden = !on;
-    sparkleLayer.opacity = on ? 1.0f : 0.0f;
-    // 蝴蝶形态下隐藏手柄本体（毛玻璃与图标）。
-    blurView.alpha = on ? 0.0 : 1.0;
-    self.imageView.alpha = on ? 0.0 : 1.0;
+    BOOL flyFree = [[POApplicationHelper settings][@"butterflyFlyFree"] boolValue];
+    if (on) {
+        if (flyFree && !butterflyFlying) {
+            [self butterflyTakeOff];
+        } else if (!flyFree && butterflyFlying) {
+            [self butterflyFlyHome];
+        } else if (!butterflyFlying && butterflyCarrier.superview != self) {
+            [self butterflyFlyHome];
+        }
+        if (!butterflyFlying) {
+            butterflyCarrier.frame = [self butterflyHomeFrame];
+        }
+        butterflyCarrier.hidden = NO;
+        sparkleLayer.opacity = 1.0f;
+        // 蝴蝶形态下隐藏手柄本体（毛玻璃与图标）。
+        blurView.alpha = 0.0;
+        self.imageView.alpha = 0.0;
+    } else {
+        [self stopFlight];
+        butterflyCarrier.hidden = YES;
+        butterflyCarrier.userInteractionEnabled = NO;
+        sparkleLayer.opacity = 0.0f;
+        blurView.alpha = 1.0;
+        self.imageView.alpha = 1.0;
+    }
+}
+
+#pragma mark - 蝴蝶飞行
+
+-(void)butterflyTakeOff{
+    if (butterflyFlying || !self.window) return;
+    butterflyFlying = YES;
+    // 换到窗口层（满屏飞）。
+    CGRect start = [self convertRect:butterflyCarrier.frame toView:self.window];
+    [self.window addSubview:butterflyCarrier];
+    butterflyCarrier.frame = start;
+    butterflyCarrier.userInteractionEnabled = YES;   // 飞行中点击=回家
+    [self cancelButterflyRetakeoff];
+    // 初速与相位。
+    flyPhaseX = ((CGFloat)arc4random() / UINT32_MAX) * 6.28f;
+    flyPhaseY = ((CGFloat)arc4random() / UINT32_MAX) * 6.28f;
+    flyVX = ((CGFloat)arc4random() / UINT32_MAX) * 2.0f - 1.0f;
+    flyVY = ((CGFloat)arc4random() / UINT32_MAX) * 2.0f - 1.0f;
+    if (!flyLink) {
+        flyLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(butterflyFlyTick)];
+        [flyLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+    }
+    flyLink.paused = NO;
+}
+
+-(void)butterflyFlyTick{
+    if (!butterflyFlying || !butterflyCarrier.superview) { flyLink.paused = YES; return; }
+    UIView *canvas = butterflyCarrier.superview;
+    CGRect b = canvas.bounds;
+    CGRect f = butterflyCarrier.frame;
+    // 正弦扰动漫游（平滑转向）+ 边界反弹。
+    flyPhaseX += 0.028f;
+    flyPhaseY += 0.023f;
+    flyVX += (CGFloat)(sin(flyPhaseX) * 0.09);
+    flyVY += (CGFloat)(cos(flyPhaseY) * 0.09);
+    CGFloat speed = 2.1;
+    CGFloat mag = (CGFloat)sqrt(flyVX * flyVX + flyVY * flyVY);
+    if (mag > 0.001) { flyVX = flyVX / mag * speed; flyVY = flyVY / mag * speed; }
+    f.origin.x += flyVX;
+    f.origin.y += flyVY;
+    CGFloat inset = 18.0;
+    if (f.origin.x < inset) { f.origin.x = inset; flyVX = fabs(flyVX); }
+    if (f.origin.y < inset + 40) { f.origin.y = inset + 40; flyVY = fabs(flyVY); }
+    if (f.origin.x > b.size.width - f.size.width - inset) { f.origin.x = b.size.width - f.size.width - inset; flyVX = -fabs(flyVX); }
+    if (f.origin.y > b.size.height - f.size.height - inset) { f.origin.y = b.size.height - f.size.height - inset; flyVY = -fabs(flyVY); }
+    butterflyCarrier.frame = f;
+    // 朝向飞行方向（蝴蝶图头朝上，转角 -π/2 对齐）。
+    if (fabs(flyVX) > 0.05 || fabs(flyVY) > 0.05) {
+        CGFloat angle = (CGFloat)atan2(flyVY, flyVX) + (CGFloat)M_PI_2;
+        butterflyCarrier.transform = CGAffineTransformMakeRotation(angle);
+    }
+}
+
+-(void)butterflyFlyHome{
+    [self stopFlight];
+    if (butterflyCarrier.superview != self) {
+        CGRect target = [self butterflyHomeFrame];
+        CGRect start = [self convertRect:butterflyCarrier.frame fromView:butterflyCarrier.superview];
+        [self addSubview:butterflyCarrier];
+        butterflyCarrier.transform = CGAffineTransformIdentity;
+        butterflyCarrier.frame = start;
+        [UIView animateWithDuration:0.45
+                              delay:0
+                            options:UIViewAnimationOptionCurveEaseInOut
+                         animations:^{
+            self->butterflyCarrier.transform = CGAffineTransformIdentity;
+            self->butterflyCarrier.frame = target;
+        } completion:nil];
+    } else {
+        butterflyCarrier.transform = CGAffineTransformIdentity;
+        butterflyCarrier.frame = [self butterflyHomeFrame];
+    }
+    butterflyCarrier.userInteractionEnabled = NO;   // 回家后点击穿透（=拉面板）
+    [self scheduleButterflyRetakeoff];
+}
+
+-(void)butterflyTapped{
+    if (butterflyFlying) {
+        [self butterflyFlyHome];
+    }
+}
+
+-(void)scheduleButterflyRetakeoff{
+    [self cancelButterflyRetakeoff];
+    [self performSelector:@selector(butterflyRetakeoffIfIdle) withObject:nil afterDelay:4.0];
+}
+-(void)cancelButterflyRetakeoff{
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(butterflyRetakeoffIfIdle) object:nil];
+}
+-(void)butterflyRetakeoffIfIdle{
+    if (!self.isNubbed && [self usesNubbedPresentation]) return;
+    if (![self usesNubbedPresentation]) return;
+    if ([[POApplicationHelper settings][@"nubButterflyOn"] boolValue] &&
+        [[POApplicationHelper settings][@"butterflyFlyFree"] boolValue]) {
+        [self butterflyTakeOff];
+    }
+}
+
+-(void)stopFlight{
+    butterflyFlying = NO;
+    flyLink.paused = YES;
+    butterflyCarrier.transform = CGAffineTransformIdentity;
+    [self cancelButterflyRetakeoff];
+}
+
+-(void)dealloc{
+    [flyLink invalidate];
+    flyLink = nil;
+    [NSObject cancelPreviousPerformRequestsWithTarget:self];
 }
 
 -(void)applyCurrentPresentationAnimated:(BOOL)animated{
