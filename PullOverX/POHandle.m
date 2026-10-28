@@ -79,12 +79,34 @@
     self.frame = frame;
 }
 
+-(void)applyCustomStyle{
+    NSDictionary *settings = [POApplicationHelper settings];
+    // 整体透明度。
+    id opacity = settings[@"handleOpacity"];
+    self.alpha = opacity ? MIN(MAX([opacity doubleValue], 0.3), 1.0) : 1.0;
+    // 彩色蒙层（毛玻璃上叠色调）。
+    BOOL tintOn = [settings[@"handleTintOn"] boolValue];
+    if (tintOn) {
+        double hue = [settings[@"handleTintHue"] doubleValue];
+        double ta = MIN(MAX([settings[@"handleTintAlpha"] doubleValue], 0.0), 1.0);
+        blurView.contentView.backgroundColor =
+            [UIColor colorWithHue:MIN(MAX(hue, 0.0), 1.0) saturation:0.65 brightness:1.0 alpha:ta];
+    } else {
+        blurView.contentView.backgroundColor = [UIColor clearColor];
+    }
+    // 阴影开关。
+    BOOL shadowOn = settings[@"handleShadowOn"] ? [settings[@"handleShadowOn"] boolValue] : YES;
+    self.layer.shadowOpacity = shadowOn ? 0.32f : 0.0f;
+}
+
 -(void)applyHandleSize{
     CGFloat size = [self handleSize];
     CGRect frame = self.frame;
     frame.size = CGSizeMake(size, size);
     self.frame = frame;
-    self.layer.cornerRadius = [self fullCornerRadius];
+    id cornerSetting = [POApplicationHelper settings][@"handleCornerScale"];
+    double cornerScale = cornerSetting ? MIN(MAX([cornerSetting doubleValue], 0.2), 2.5) : 1.0;
+    self.layer.cornerRadius = [self fullCornerRadius] * cornerScale;
 
     CGFloat iconSize = MAX(0, size - 10.0);
     self.imageView.frame = CGRectMake((CGRectGetWidth(self.bounds) - iconSize) / 2.0,
@@ -92,7 +114,8 @@
                                       iconSize,
                                       iconSize);
     blurView.frame = self.bounds;
-    blurView.layer.cornerRadius = [self usesNubbedPresentation] ? [self nubbedCornerRadius] : [self fullCornerRadius];
+    blurView.layer.cornerRadius = ([self usesNubbedPresentation] ? [self nubbedCornerRadius] : [self fullCornerRadius]) * cornerScale;
+    [self applyCustomStyle];
 }
 
 -(instancetype)initWithController:(id)hubController{
