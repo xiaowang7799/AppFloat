@@ -197,6 +197,26 @@ static NSString *const kAxsAppFloatRequester = @"AppFloat";
     return nil;
 }
 
+- (UIView *)layerHostContainerFromScene:(id)scene {
+    // 新 iOS 路径：_UISceneLayerHostContainerView 直接挂场景图层
+    //（DualPane 在 iOS 15/16+ 上的实际生效路径，handle 工厂常渲染空白）。
+    Class cls = NSClassFromString(@"_UISceneLayerHostContainerView");
+    if (!scene || !cls) return nil;
+    @try {
+        id allocated = [cls alloc];
+        SEL init1 = NSSelectorFromString(@"initWithScene:debugDescription:");
+        SEL init2 = NSSelectorFromString(@"initWithScene:");
+        id view = nil;
+        if ([allocated respondsToSelector:init1]) {
+            view = ((id (*)(id, SEL, id, id))objc_msgSend)(allocated, init1, scene, @"AppFloat");
+        } else if ([allocated respondsToSelector:init2]) {
+            view = ((id (*)(id, SEL, id))objc_msgSend)(allocated, init2, scene);
+        }
+        if ([view isKindOfClass:[UIView class]]) return view;
+    } @catch (__unused NSException *e) {}
+    return nil;
+}
+
 - (UIView *)hostViewFromHandleFallback {
     id handle = self.sceneHandle;
     if (!handle) return nil;
@@ -237,6 +257,13 @@ static NSString *const kAxsAppFloatRequester = @"AppFloat";
     id scene = self.scene;
     if (!scene) return;
     @try {
+        if (foreground) {
+            // 激活内容状态（缺它场景不渲染）。
+            SEL setContentState = NSSelectorFromString(@"_setContentState:");
+            if ([scene respondsToSelector:setContentState]) {
+                ((void (*)(id, SEL, NSInteger))objc_msgSend)(scene, setContentState, 2);
+            }
+        }
         id settings = nil;
         for (NSString *name in @[@"settings", @"mutableSettings", @"_mutableSettings"]) {
             SEL sel = NSSelectorFromString(name);
@@ -327,7 +354,9 @@ static NSString *const kAxsAppFloatRequester = @"AppFloat";
     }
     [self applyForeground:YES];
     id hostManager = [self hostManagerFromScene:scene];
-    UIView *hv = [self hostViewFromManager:hostManager] ?: [self hostViewFromHandleFallback];
+    UIView *hv = [self hostViewFromManager:hostManager]
+        ?: [self layerHostContainerFromScene:scene]
+        ?: [self hostViewFromHandleFallback];
     if (!hv) {
         self.statusText = [NSString stringWithFormat:@"找到场景但无宿主视图（iOS %@）",
                            [UIDevice currentDevice].systemVersion];

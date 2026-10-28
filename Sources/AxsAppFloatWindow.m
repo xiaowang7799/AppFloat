@@ -58,12 +58,20 @@ static const CGFloat kHeaderHeight = 36.0;
         [_header addSubview:_titleLabel];
 
         UIButton *maxBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        maxBtn.frame = CGRectMake(frame.size.width - 76, 0, 38, kHeaderHeight);
+        maxBtn.frame = CGRectMake(frame.size.width - 114, 0, 38, kHeaderHeight);
         maxBtn.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
         [maxBtn setTitle:@"⤢" forState:UIControlStateNormal];
         maxBtn.tintColor = [UIColor whiteColor];
         [maxBtn addTarget:self action:@selector(toggleMaximize) forControlEvents:UIControlEventTouchUpInside];
         [_header addSubview:maxBtn];
+
+        UIButton *retryBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        retryBtn.frame = CGRectMake(frame.size.width - 76, 0, 38, kHeaderHeight);
+        retryBtn.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
+        [retryBtn setTitle:@"↻" forState:UIControlStateNormal];
+        retryBtn.tintColor = [UIColor whiteColor];
+        [retryBtn addTarget:self action:@selector(attachScene) forControlEvents:UIControlEventTouchUpInside];
+        [_header addSubview:retryBtn];
 
         UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
         closeBtn.frame = CGRectMake(frame.size.width - 38, 0, 38, kHeaderHeight);
@@ -81,11 +89,13 @@ static const CGFloat kHeaderHeight = 36.0;
         _contentView.clipsToBounds = YES;
         [self addSubview:_contentView];
 
-        _hintLabel = [[UILabel alloc] initWithFrame:_contentView.bounds];
-        _hintLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        _hintLabel.textColor = [UIColor colorWithWhite:1 alpha:0.65];
-        _hintLabel.font = [UIFont systemFontOfSize:13];
-        _hintLabel.numberOfLines = 0;
+        _hintLabel = [[UILabel alloc] initWithFrame:
+            CGRectMake(0, frame.size.height - kHeaderHeight - 34, frame.size.width, 34)];
+        _hintLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
+        _hintLabel.textColor = [UIColor colorWithWhite:1 alpha:0.8];
+        _hintLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0.55];
+        _hintLabel.font = [UIFont systemFontOfSize:10];
+        _hintLabel.numberOfLines = 2;
         _hintLabel.textAlignment = NSTextAlignmentCenter;
         _hintLabel.text = @"正在连接应用画面…";
         [_contentView addSubview:_hintLabel];
@@ -124,6 +134,11 @@ static const CGFloat kHeaderHeight = 36.0;
         self.hintLabel.text = self.host.statusText ?: @"无法连接画面";
         self.hintLabel.hidden = NO;
     }
+    // 状态行常驻显示（空白时可据此定位宿主路径）。
+    self.hintLabel.text = [NSString stringWithFormat:@"%@\n[%@]",
+        self.host.statusText ?: @"", [UIDevice currentDevice].systemVersion];
+    self.hintLabel.hidden = NO;
+    [self.contentView bringSubviewToFront:self.hintLabel];
 }
 
 - (void)layoutSubviews {
